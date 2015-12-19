@@ -146,7 +146,7 @@ wx_popup_menu_init(X0,Y0,Names,Menus0) ->
 
 wx_popup_menu(X,Y,Names,Menus0,Magnet,Owner) ->
     Parent = get(top_frame),
-    Pos = wxWindow:clientToScreen(get(gl_canvas), X,Y),
+    Pos = wxWindow:clientToScreen(?GET(gl_canvas), X,Y),
     HotKeys = wings_hotkey:matching(Names),
     is_list(Menus0) orelse erlang:error(Menus0),
     Menus1  = wings_plugin:menu(list_to_tuple(reverse(Names)), Menus0),
@@ -340,11 +340,11 @@ mouse_button(#wxMouse{type=What, controlDown = Ctrl, altDown = Alt, metaDown = M
     end.
 
 popup_event_handler(cancel, _, _) ->
-    wxPanel:setFocus(get(gl_canvas)),
+    wxPanel:setFocus(?GET(gl_canvas)),
     pop;
 popup_event_handler({activate, Cmd}, Owner, _) ->
     Cmd =:= ignore orelse wings_wm:send_after_redraw(Owner, {action,Cmd}),
-    wxPanel:setFocus(get(gl_canvas)),
+    wxPanel:setFocus(?GET(gl_canvas)),
     pop;
 popup_event_handler(restart_menu, _Owner, Popup) ->
     {_, X, Y} = wings_io:get_mouse_state(),
