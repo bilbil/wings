@@ -72,8 +72,12 @@ is_popup_event(_Event) ->
 menu(X, Y, Owner, Name, Menu) ->
     wings_wm_menu:menu(X, Y, Owner, Name, Menu).
 
-popup_menu(X, Y, Name, Menu) ->
-    wx_popup_menu_init(X,Y,[Name],Menu).
+popup_menu(X, Y, Name, Menu) %% Should be removed, the next should be used !!
+  when is_number(X), is_number(Y) ->
+    Win = ?GET(gl_canvas),
+    wx_popup_menu_init(Win, wxWindow:clientToScreen(Win, X, Y), [Name], Menu);
+popup_menu(Parent, {_,_} = GlobalPos, Name, Menu) ->
+    wx_popup_menu_init(Parent, GlobalPos, [Name], Menu).
 
 kill_menus() ->
     case wings_wm:is_window(menu_killer) of
@@ -146,17 +150,15 @@ have_magnet(Ps, _) ->
     proplists:is_defined(magnet, Ps).
 
 
-wx_popup_menu_init(X0,Y0,Names,Menus0) ->
+wx_popup_menu_init(Parent,Pos,Names,Menus0) ->
     Owner = wings_wm:this(),
-    Popup = fun(X,Y) ->
-		    wx_popup_menu(X,Y,Names,Menus0,false,Owner)
+    Popup = fun(GlobalPos) ->
+		    wx_popup_menu(Parent,GlobalPos,Names,Menus0,false,Owner)
 	    end,
-    Popup(X0,Y0),
-    {push, fun(Ev) -> popup_event_handler(Ev, Owner, Popup) end}.
+    Popup(Pos),
+    {push, fun(Ev) -> popup_event_handler(Ev, {Parent,Owner}, Popup) end}.
 
-wx_popup_menu(X,Y,Names,Menus0,Magnet,Owner) ->
-    Parent = get(top_frame),
-    Pos = wxWindow:clientToScreen(?GET(gl_canvas), X,Y),
+wx_popup_menu(Parent,Pos,Names,Menus0,Magnet,Owner) ->
     HotKeys = wings_hotkey:matching(Names),
     is_list(Menus0) orelse erlang:error(Menus0),
     Menus1  = wings_plugin:menu(list_to_tuple(reverse(Names)), Menus0),
@@ -352,7 +354,7 @@ mouse_button(#wxMouse{type=What, controlDown = Ctrl, altDown = Alt, metaDown = M
 popup_event_handler(cancel, _, _) ->
     wxPanel:setFocus(?GET(gl_canvas)),
     pop;
-popup_event_handler({activate, Cmd}, Owner, _) ->
+popup_event_handler({activate, Cmd}, {_,Owner}, _) ->
     Cmd =:= ignore orelse wings_wm:send_after_redraw(Owner, {action,Cmd}),
     wxPanel:setFocus(?GET(gl_canvas)),
     pop;
@@ -360,21 +362,21 @@ popup_event_handler(restart_menu, _Owner, Popup) ->
     {_, X, Y} = wings_io:get_mouse_state(),
     Popup(X,Y);
 popup_event_handler({submenu, {What, MagnetClick}, Names, Opts, Menus}, 
-		    Owner, Fun) ->
-    {_, X, Y} = wings_io:get_mouse_state(),
+		    {Win,Owner}=Parents, Fun) ->
+    Pos = wx_misc:getMousePosition(),
     case is_function(Menus) of
 	true ->
 	    case Menus(mouse_index(What), Names) of
 		ignore ->
-		    wx_popup_menu(X,Y,Names, Menus(1, Names), MagnetClick, Owner);
+		    wx_popup_menu(Win, Pos, Names, Menus(1, Names), MagnetClick, Owner);
 		Next when is_list(Next) ->
-		    wx_popup_menu(X,Y, Names, Next, MagnetClick, Owner);
+		    wx_popup_menu(Win, Pos, Names, Next, MagnetClick, Owner);
 		Action when is_tuple(Action); is_atom(Action) ->
 		    Magnet = is_magnet_active(Opts, MagnetClick),
-		    popup_event_handler({activate, insert_magnet_flags(Action, Magnet)}, Owner, Fun)
+		    popup_event_handler({activate, insert_magnet_flags(Action, Magnet)}, Parents, Fun)
 	    end;
 	false ->
-	    wx_popup_menu(X,Y,Names,Menus,MagnetClick,Owner)
+	    wx_popup_menu(Win,Pos,Names,Menus,MagnetClick,Owner)
     end;
 popup_event_handler({message, Msg}, _Owner, _) ->
     wings_wm:message(Msg, ""),
