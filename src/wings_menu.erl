@@ -359,8 +359,8 @@ popup_event_handler({activate, Cmd}, {_,Owner}, _) ->
     wxPanel:setFocus(?GET(gl_canvas)),
     pop;
 popup_event_handler(restart_menu, _Owner, Popup) ->
-    {_, X, Y} = wings_io:get_mouse_state(),
-    Popup(X,Y);
+    Pos = wx_misc:getMousePosition(),
+    Popup(Pos);
 popup_event_handler({submenu, {What, MagnetClick}, Names, Opts, Menus}, 
 		    {Win,Owner}=Parents, Fun) ->
     Pos = wx_misc:getMousePosition(),
