@@ -35,8 +35,8 @@
 
 format_hotkey(Hotkey, Style) ->
     case Hotkey of
-	[] ->
-	    [];
+	[] -> [];
+	[_|_] -> Hotkey;
 	{C,Mods} ->
 	    modname(Mods, Style) ++ vkeyname(C);
 	_ ->

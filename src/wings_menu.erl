@@ -19,9 +19,15 @@
 -export([update_menu/3, update_menu/4,
 	 update_menu_enabled/3, update_menu_hotkey/2]).
 
+%% Reuse in tweak windows
+-export([normalize_menu_wx/3, calc_min_sizes/4,
+	 format_hotkeys/2, setup_popup/7,
+	 setup_colors/3,
+	 entry_msg/2, entry_cmd/2, entry_wins/1]).
+
 -define(NEED_ESDL, 1).
 -include("wings.hrl").
--import(lists, [foldl/3,reverse/1,sort/1]).
+-import(lists, [foldl/3,reverse/1]).
 
 -define(REPEAT, 99).
 -define(REPEAT_ARGS, 98).
@@ -40,7 +46,8 @@
 	 name,
 	 type,
 	 opts,
-	 msg=""
+	 msg="",
+	 win
 	}).
 
 %% Top level menu entries
@@ -260,8 +267,7 @@ popup_events(Dialog, Panel, Entries, Magnet, Previous, Ns, Owner) ->
 			  setup_colors(Obj, colorB(menu_hilite),colorB(menu_hilited_text))
 		  end,
 	    Line = wx:batch(Set),
-	    #menu_pop{msg=Msg} = lists:keyfind(Id, 2, Entries),
-	    wings_wm:psend(Owner, {message, Msg}),
+	    wings_wm:psend(Owner, {message, entry_msg(Id, Entries)}),
 	    popup_events(Dialog, Panel, Entries, Magnet, Line, Ns, Owner);
 	#wx{id=Id0, event=Ev=#wxMouse{y=Y, x=X}} ->
 	    Id = case Id0 > 0 orelse find_active_panel(Panel, X, Y) of
@@ -459,7 +465,8 @@ setup_popup([{Desc, Name, Help, Props, HK}|Es], Id, Sizer, Sz = {Sz1,Sz2}, Paren
     wxPanel:setSizerAndFit(Panel, Line),
     wxSizer:add(Sizer, Panel, [{flag, ?wxEXPAND}, {proportion, 1}]),
     menu_connect([Panel,T1,T2|BM], [left_up, middle_up, right_up, enter_window]),
-    Pop = #menu_pop{wxid=Id, type=menu, name=Name, opts=Props, msg=CmdMsg},
+    Win = #{panel=>Panel, label=>T1, hotkey=>T2},
+    Pop = #menu_pop{wxid=Id, type=menu, name=Name, opts=Props, msg=CmdMsg, win=Win},
     setup_popup(Es, Id+2, Sizer, Sz, Parent,Magnet,[Pop#menu_pop{wxid=Id+1, type=opt},Pop|Acc]);
 setup_popup([], _, _, _, _, _, Acc) -> lists:reverse(Acc).
 
@@ -472,6 +479,16 @@ create_color_box(Id, Panel, H, Props) ->
     wxImage:destroy(Image),
     wxBitmap:destroy(Bitmap),
     SBM.
+
+entry_msg(Id, Entries) ->
+    #menu_pop{msg=Msg} = lists:keyfind(Id, 2, Entries),
+    Msg.
+
+entry_cmd(Id, Entries) ->
+    #menu_pop{name=Cmd} = lists:keyfind(Id, 2, Entries),
+    Cmd.
+entry_wins(#menu_pop{win=Win}) ->
+    Win.
 
 menu_connect(Windows, Evs) ->
     [ [wxWindow:connect(Win, Ev) || Ev <- Evs] || Win <- Windows].
@@ -688,7 +705,10 @@ setup_menu(Names, Id, Menus1) when is_list(Menus1) ->
 normalize_menu_wx(separator, _, _) -> separator;
 normalize_menu_wx({S,Fun,Help,Ps}, Hotkeys, Ns) when is_function(Fun) ->
     Name = Fun(1, Ns),
-    HK = match_hotkey(reduce_name(Name), Hotkeys, have_option_box(Ps)),
+    HK = case proplists:get_value(hotkey, Ps) of
+	     undefined -> match_hotkey(reduce_name(Name), Hotkeys, have_option_box(Ps));
+	     String -> String
+	 end,
     {S,Fun,Help,Ps,HK};
 normalize_menu_wx({S, {Name, SubMenu}}, Hotkeys, Ns)
   when is_list(SubMenu); is_function(SubMenu) ->
@@ -703,7 +723,10 @@ normalize_menu_wx({S,{Name,Fun},Help,Ps}, Hotkeys, Ns)
     HK = match_hotkey(reduce_name(Name), Hotkeys, have_option_box(Ps)),
     {submenu, S, {Name, Fun}, submenu_help(Help, Fun, [Name|Ns]), Ps, HK};
 normalize_menu_wx({S,Name,Help,Ps}, Hotkeys, _Ns) ->
-    HK = match_hotkey(reduce_name(Name), Hotkeys, have_option_box(Ps)),
+    HK = case proplists:get_value(hotkey, Ps) of
+	     undefined -> match_hotkey(reduce_name(Name), Hotkeys, have_option_box(Ps));
+	     String -> String
+	 end,
     {S,Name,Help,Ps,HK};
 normalize_menu_wx({S,Name}, Hotkeys, _Ns) ->
     HK = match_hotkey(reduce_name(Name), Hotkeys, false),
@@ -717,8 +740,11 @@ normalize_menu_wx({S,Name,Help}, Hotkeys, _Ns)
     HK = match_hotkey(reduce_name(Name), Hotkeys, false),
     {S,Name,Help,[], HK};
 normalize_menu_wx({S,Name,Ps},Hotkeys, _Ns) ->
-    HK = match_hotkey(reduce_name(Name), Hotkeys, have_option_box(Ps)),
-    {S,Name,[],Ps, HK}.
+    HK = case proplists:get_value(hotkey, Ps) of
+	     undefined -> match_hotkey(reduce_name(Name), Hotkeys, have_option_box(Ps));
+	     String -> String
+	 end,
+    {S,Name,[],Ps,HK}.
 
 format_hotkeys([separator=H|T], Style) ->
     [H|format_hotkeys(T, Style)];
@@ -845,7 +871,7 @@ predefined_item(_M, _C) ->
 %%    io:format("Ignore ~p ~p~n",[_M,_C]),
     false.
 
-colorB({R,G,B,A}) -> {trunc(R*255),trunc(G*255),trunc(B*255),trunc(A*255)};
-colorB({R,G,B}) -> {trunc(R*255),trunc(G*255),trunc(B*255),255};
 colorB(Pref) when is_atom(Pref) ->
-    colorB(wings_pref:get_value(Pref)).
+    wings_color:rgb4bv(wings_pref:get_value(Pref));
+colorB(Col) -> wings_color:rgb4bv(Col).
+
