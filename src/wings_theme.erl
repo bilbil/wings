@@ -80,9 +80,9 @@ native_theme() ->
 	      {outliner_geograph_hl,      highlight},
 	      {outliner_geograph_hl_text, highlighttext},
 	      {outliner_geograph_text, windowtext},
-	      {title_active_color, btnhighlight},
-	      {title_passive_color,menubar},
-	      {title_text_color,   menutext}
+	      {title_active_color, activecaption},
+	      {title_passive_color,inactivecaption},
+	      {title_text_color,   captiontext}
 	     ],
     OS = element(2, os:type()),
     Version = os:version(),
