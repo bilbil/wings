@@ -752,7 +752,10 @@ make_internal_win(Parent, #win{title=Label, win=Child, ps=#{close:=Close, move:=
     Win = wxPanel:new(Parent, []),
     PBG = wings_color:rgb4bv(wings_pref:get_value(title_passive_color)),
     {Bar,ST} = Wins = make_bar(Win, PBG, Label, Close),
-    catch wxWindow:setDoubleBuffered(Bar, true), %% catch not available on mac
+    case os:type() of
+	{win32, _} ->  wxWindow:setDoubleBuffered(Bar, true);
+	_ -> ignore
+    end,
     Top = wxBoxSizer:new(?wxVERTICAL),
     BorderB = ?wxLEFT bor ?wxRIGHT bor ?wxUP,
     wxSizer:add(Top, Bar, [{proportion, 0}, {flag, ?wxEXPAND bor BorderB}, {border, 2}]),
