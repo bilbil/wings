@@ -111,6 +111,8 @@ native({What, MenuText}, linux, _)
 	   end};
 native({What=menu_hilite, menuhilight}, darwin, Ver) ->
     native({What, highlight}, darwin, Ver);
+native({What, activecaption}, darwin, Ver) ->
+    native({What, btnhighlight}, darwin, Ver);
 native({What, Suggestion}, _, _) ->
     {What, default(Suggestion)}.
 

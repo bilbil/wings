@@ -772,7 +772,10 @@ make_bar(Parent, BG, Label, Close) ->
     Bar = wxPanel:new(Parent, [{style, ?wxBORDER_SIMPLE}, {size, {-1, ?WIN_BAR_HEIGHT}}]),
     FG = wings_pref:get_value(title_text_color),
     #{size:=Sz} = FI = wings_text:get_font_info(?GET(system_font_wx)),
-    Font = wings_text:make_wxfont(FI#{size:=Sz-2}),
+    Font = case os:type() of
+	       {unix, darwin} -> wings_text:make_wxfont(FI#{size:=Sz-1});
+	       _ -> wings_text:make_wxfont(FI#{size:=Sz-2})
+	   end,
     wxPanel:setFont(Bar, Font),
     wxWindow:setBackgroundColour(Bar, BG),
     wxWindow:setForegroundColour(Bar, wings_color:rgb4bv(FG)),
@@ -790,14 +793,14 @@ make_bar(Parent, BG, Label, Close) ->
 make_close_button(Parent, Bar, WBSz, H) ->
     Bitmap0 = wxArtProvider:getBitmap("wxART_CROSS_MARK",[{client, "wxART_MESSAGE_BOX"}]),
     Bitmap = case os:type() of
-		 {win32, _} -> %% Do not scale on windows
-		     Bitmap0;
-		 _ ->
+		{unix, linux} ->
 		     Im0 = wxBitmap:convertToImage(Bitmap0),
 		     Im1 = wxImage:scale(Im0,H,H,[{quality, ?wxIMAGE_QUALITY_HIGH}]),
 		     BM = wxBitmap:new(Im1),
 		     wxImage:destroy(Im1), wxImage:destroy(Im0),
-		     BM
+		     BM;
+		 {_, _} -> %% Do not scale on windows
+		     Bitmap0
 	     end,
     SBM = wxStaticBitmap:new(Bar, ?wxID_EXIT, Bitmap),
     %% io:format("SBM = ~p~n",[wxWindow:getSize(SBM)]),
