@@ -323,8 +323,8 @@ update_active(Name, #state{active=Prev, windows=#{ch:=Root}}=State) ->
     ABG = wings_color:rgb4bv(wings_pref:get_value(title_active_color)),
     PBG = wings_color:rgb4bv(wings_pref:get_value(title_passive_color)),
     try
-	#win{bar={PBar,_}} = Prev,
-	_ = wxWindow:getSize(PBar), %% Sync check PBar validity
+	#win{bar={PBar,_}} = find_win(Prev, Root),
+	_ = wxWindow:getSize(PBar), %% Sync to check PBar validity
 	wxWindow:setBackgroundColour(PBar, PBG),
 	wxWindow:refresh(PBar)
     catch _:_ -> ignore
@@ -332,10 +332,10 @@ update_active(Name, #state{active=Prev, windows=#{ch:=Root}}=State) ->
     try find_win(Name, Root) of
 	false ->
 	    State#state{active=undefined};
-	#win{bar={ABar,_}} = Win ->
+	#win{bar={ABar,_}} ->
 	    wxWindow:setBackgroundColour(ABar, ABG),
 	    wxWindow:refresh(ABar),
-	    State#state{active=Win}
+	    State#state{active=Name}
     catch _:_ ->
 	    State
     end.
