@@ -695,7 +695,7 @@ dispatch_event(Event) ->
     end.
 
 menubar_focus() ->
-    menubar_focus_1([get(vm_focus), get(wm_focus_prev)]).
+    menubar_focus_1([get(wm_focus), get(wm_focus_prev)]).
 
 menubar_focus_1([undefined|Rest]) ->
     menubar_focus_1(Rest);
