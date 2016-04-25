@@ -1090,8 +1090,7 @@ drag(#mousebutton{x=X,y=Y,button=B}, Rect, Redraw, DropData) ->
     State = 1 bsl (B-1),
     drag_1(X, Y, State, Rect, Redraw, DropData).
 
-drag_1(X0, Y0, State, {W,H}, Redraw, DropData) ->
-    {X1,Y1} = wings_wm:local2global(X0, Y0),
+drag_1(X1, Y1, State, {W,H}, Redraw, DropData) ->
     X = X1 - W div 2,
     Y = Y1 - H div 2,
     Drag = #drag{data=DropData,bstate=State,redraw=Redraw},

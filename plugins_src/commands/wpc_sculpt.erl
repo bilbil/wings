@@ -67,7 +67,6 @@ command({sculpt,_}, St) -> St;
 command(_,_) -> next.
 
 sculpt_mode_setup(#st{shapes=Shs}=St0) ->
-    Active = wings_wm:this(),
     wings_tweak:toggle_draw(false),
     St = wings_undo:init(St0#st{selmode=face,sel=[],sh=false}),
     Mir = mirror_info(Shs, []),
@@ -80,7 +79,6 @@ sculpt_mode_setup(#st{shapes=Shs}=St0) ->
     Sc = #sculpt{mode=Mode,mir=Mir,str=Str,mag=Mag,rad=Rad,mag_type=MagType,
           locked=Lv,st=St,wst=St,ost=St0},
     wings:mode_restriction([face]),
-    wings_wm:callback(fun() -> wings_u:menu_restriction(Active, [view]) end),
     {seq,push,update_sculpt_handler(Sc)}.
 
 shape_attr(S) ->
@@ -892,7 +890,7 @@ set_values([]) -> ok.
 %%%
 
 sculpt_menu(X0, Y0, Sc) ->
-    Pos = wings_wm:local2screen(X0, Y0),
+    Pos = wings_wm:local2screen({X0, Y0}),
     Menu = sculpt_menu(Sc),
     wings_menu:popup_menu(wings_wm:this_win(), Pos, sculpt, Menu).
 
