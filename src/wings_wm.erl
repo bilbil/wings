@@ -425,6 +425,8 @@ grab_focus() ->
 grab_focus(Name) ->
     case is_window(Name) of
 	true  ->
+%%	    {_, [_,Where|_]} = erlang:process_info(self(), current_stacktrace),
+%%	    io:format("Grab ~p~n",[Where]),
 	    case get(wm_focus_grab) of
 		undefined -> put(wm_focus_grab, [Name]);
 		Stack -> put(wm_focus_grab, [Name|Stack])
@@ -706,9 +708,14 @@ update_focus(none) ->
     case erase(wm_focus) of
 	undefined -> none;
 	OldActive ->
-	    put(wm_focus_prev, OldActive),
-	    do_dispatch(OldActive, lost_focus),
-	    none
+	    case grabbed_focus_window() of
+		undefined ->
+		    put(wm_focus_prev, OldActive),
+		    do_dispatch(OldActive, lost_focus),
+		    none;
+		Win ->
+		    Win
+	    end
     end;
 update_focus(Active) ->
     case grabbed_focus_window() of
